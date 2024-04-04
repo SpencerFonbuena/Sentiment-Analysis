@@ -8,13 +8,13 @@ from transformers import BertTokenizer, BertForSequenceClassification
 
 
 def x0_model(text):
-    local_dir = '/Users/spencerfonbuena/Documents/Python/FO/Sentiment Analysis/news/analysis/lenglish_model'
+    local_dir = '/root/models/lengish_model'
     sentiment_analysis = pipeline("sentiment-analysis",model=local_dir)
     return sentiment_analysis(text)
 
 
 def x1_model(text):
-    local_dir = '/Users/spencerfonbuena/Documents/Python/FO/Sentiment Analysis/news/analysis/fbtone_model'
+    local_dir = '/root/models/fbtone_model'
     model = BertForSequenceClassification.from_pretrained(local_dir,num_labels=3)
     tokenizer = BertTokenizer.from_pretrained(local_dir)
     nlp = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
@@ -31,7 +31,7 @@ def preprocess_x2(text):
     return " ".join(new_text)
 
 def x2_model(input_text):
-    MODEL = '/Users/spencerfonbuena/Documents/Python/FO/Sentiment Analysis/socialmed/twitter/x2_model'
+    MODEL = '/root/models/x2_model'
     model_path = MODEL
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     config = AutoConfig.from_pretrained(model_path)

@@ -4,9 +4,67 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 from sqlalchemy.dialects.mysql import LONGTEXT, TINYTEXT, MEDIUMBLOB, DATETIME
 import mysql.connector
+import requests
+from bs4 import BeautifulSoup
+from pydantic import BaseModel
+
+
+from data_feeds.ABCNews.economics import abc_econ
+from data_feeds.ABCNews.news import abc_news
 
 from data_feeds.APNews.economics import ap_econ
-from data_feeds.APNews.news import APNews
+from data_feeds.APNews.news import ap_news
+
+from data_feeds.BBC.economics import bbc_econ
+
+from data_feeds.BInsider.economics import binsider_econ
+from data_feeds.BInsider.news import binsider_news
+
+from data_feeds.Breitbart.economy import breitbart_econ
+from data_feeds.Breitbart.news import breitbart_news
+
+from data_feeds.CBS.economics import cbs_econ
+from data_feeds.CBS.news import cbs_news
+
+from data_feeds.CNN.economics import cnn_econ
+from data_feeds.CNN.news import cnn_news
+
+from data_feeds.DailyMail.economics import dm_econ
+from data_feeds.DailyMail.news import dm_news
+
+from data_feeds.DailyWire.news import dw_news
+
+from data_feeds.Fox.news import fox_news
+
+from data_feeds.Guardian.economics import guardian_econ
+from data_feeds.Guardian.news import guardian_news
+
+from data_feeds.MarketWatch.economics import mw_econ
+
+from data_feeds.NBC.economics import nbc_econ
+from data_feeds.NBC.news import nbc_news
+
+from data_feeds.NYTimes.economics import nyt_econ
+from data_feeds.NYTimes.news import nyt_news
+
+from data_feeds.Politico.news import politico_news
+
+from data_feeds.TheEconomist.economics import economist_econ
+from data_feeds.TheEconomist.news import economist_news
+
+from data_feeds.TYT.news import tyt_news
+
+from data_feeds.UsaToday.economics import usat_econ
+from data_feeds.UsaToday.news import usat_news
+
+from data_feeds.WSJ.economics import wsj_econ
+from data_feeds.WSJ.news import wsj_news
+
+from data_feeds.Yahoo.finance import yf_econ
+from data_feeds.Yahoo.news import yf_news
+
+
+
 settings = get_settings()
 
 class SiteData:
@@ -170,11 +228,181 @@ class SiteData:
                 'https://www.yahoo.com/news/politics/']
 
 
-df = pd.DataFrame(data)
+'''Process the article and get it ready for sentiment classifier'''
+def article_pull(url):
+    # Don't render articles. It will come up with many you don't want.
+    payload = { 'api_key': 'f96027d9e4562ff1645ab574bf4759a0', 'url': url}
+    r = requests.get('https://api.scraperapi.com/', params=payload)
+    html_response = r.text
+
+    soup = BeautifulSoup(html_response, 'html.parser')
+    text_only = soup.get_text(strip=True)
+    return text_only
+
+
+
+df = pd.DataFrame(columns=['link', 'title'])
+
+# ABC Econ
+for ele in SiteData.abcecon_sites:
+    abcEcon = abc_econ(ele)
+    df = pd.concat((df, abcEcon))
+
+for ele in SiteData.abcnews_sites:
+    abcnews = abc_news(ele)
+    df = pd.concat((df, abcnews))
+
+# AP News
+for ele in SiteData.apecon_sites:
+    apEcon = ap_econ(ele)
+    df = pd.concat((df, apEcon))
+
+for ele in SiteData.apnews_sites:
+    apNews = ap_news(ele)
+    df = pd.concat((df, apNews))
+
+# BBC News
+for ele in SiteData.bbcecon_sites:
+    bbcEcon = bbc_econ(ele)
+    df = pd.concat((df, bbcEcon))
+
+#BInsider
+for ele in SiteData.biecon_sites:
+    biEcon = binsider_econ(ele)
+    df = pd.concat((df, biEcon))
+
+for ele in SiteData.binews_sites:
+    biNews = binsider_news(ele)
+    df = pd.concat((df, biNews))
+
+#Breitbart
+for ele in SiteData.breitbartecon_sites:
+    breitbartEcon = breitbart_econ(ele)
+    df = pd.concat((df, breitbartEcon))
+
+for ele in SiteData.breitbartnews_sites:
+    breitbartNews = breitbart_news(ele)
+    df = pd.concat((df, breitbartNews))
+
+# CBS
+for ele in SiteData.cbsecon_sites:
+    cbsEcon = cbs_econ(ele)
+    df = pd.concat((df, cbsEcon))
+
+for ele in SiteData.cbsnews_sites:
+    cbsNews = cbs_news(ele)
+    df = pd.concat((df, cbsNews))
+
+# CNN
+for ele in SiteData.cnnecon_sites:
+    cnnEcon = cnn_econ(ele)
+    df = pd.concat((df, cnnEcon))
+
+for ele in SiteData.cnnnews_sites:
+    cnnNews = cnn_news(ele)
+    df = pd.concat((df, cnnNews))
+
+# Daily Mail
+for ele in SiteData.dmecon_sites:
+    dmEcon = dm_econ(ele)
+    df = pd.concat((df, dmEcon))
+
+for ele in SiteData.dmnews_sites:
+    dmNews = dm_news(ele)
+    df = pd.concat((df, dmNews))
+
+# Daily Wire
+for ele in SiteData.dwnews_sites:
+    dwNews = dw_news(ele)
+    df = pd.concat((df, dwNews))
+
+# Fox
+for ele in SiteData.foxnews_sites:
+    foxNews = fox_news(ele)
+    df = pd.concat((df, foxNews))
+
+# Guardian
+for ele in SiteData.guardianecon_sites:
+    guardianEcon = guardian_econ(ele)
+    df = pd.concat((df, guardianEcon))
+
+for ele in SiteData.guardiannews_sites:
+    guardianNews = guardian_news(ele)
+    df = pd.concat((df, guardianNews))
+
+# Market Watch
+for ele in SiteData.mwecon_sites:
+    mwEcon = mw_econ(ele)
+    df = pd.concat((df, mwEcon))
+
+# NBC
+for ele in SiteData.nbcecon_sites:
+    nbcEcon = nbc_econ(ele)
+    df = pd.concat((df, nbcEcon))
+
+for ele in SiteData.nbcnews_sites:
+    nbcNews = nbc_news(ele)
+    df = pd.concat((df, nbcNews))
+
+# NY Times
+for ele in SiteData.nytecon_sites:
+    nytEcon = nyt_econ(ele)
+    df = pd.concat((df, nytEcon))
+
+for ele in SiteData.nytnews_sites:
+    nytNews = nyt_news(ele)
+    df = pd.concat((df, nytNews))
+
+# Politico
+for ele in SiteData.politiconews_sites:
+    politicoNews = politico_news(ele)
+    df = pd.concat((df, politicoNews))
+
+# The Economist
+for ele in SiteData.economistecon_sites:
+    economistEcon = economist_econ(ele)
+    df = pd.concat((df, economistEcon))
+
+for ele in SiteData.economistnews_sites:
+    economistNews = economist_news(ele)
+    df = pd.concat((df, economistNews))
+
+# TYT
+for ele in SiteData.tytnews_sites:
+    tytNews = tyt_news(ele)
+    df = pd.concat((df, tytNews))
+
+# USA Today
+for ele in SiteData.usatecon_sites:
+    usatEcon = usat_econ(ele)
+    df = pd.concat((df, usatEcon))
+
+for ele in SiteData.usatnews_sites:
+    usatNews = usat_news(ele)
+    df = pd.concat((df, usatNews))
+
+# WSJ
+for ele in SiteData.wsjecon_sites:
+    wsjEcon = wsj_econ(ele)
+    df = pd.concat((df, wsjEcon))
+
+for ele in SiteData.wsjnews_sites:
+    wsjNews = wsj_news(ele)
+    df = pd.concat((df, wsjNews))
+
+# Yahoo
+for ele in SiteData.yahooecon_sites:
+    yahooEcon = yf_econ(ele)
+    df = pd.concat((df, yahooEcon))
+
+for ele in SiteData.yahoonews_sites:
+    yahooNews = yf_news(ele)
+    df = pd.concat((df, yahooNews))
+
 
 engine = create_engine(settings.DB_URL)
 
-df.to_sql(name='inter_articles', con=engine, if_exists='append', index=False)
+df.to_sql(name='inter_init_scrape', con=engine, if_exists='append', index=False)
 
 
 # Create a session to execute the deletion
@@ -182,11 +410,11 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 sql_statement = """
-INSERT INTO news_articles (url, network, sentiment, headline, article)
-SELECT inter.url, inter.network, inter.sentiment, inter.headline, inter.article
-FROM inter_articles AS inter
-LEFT JOIN news_articles AS test ON inter.url = test.url
-WHERE test.url IS NULL;
+INSERT INTO init_scrape (link, title)
+SELECT inter.link, inter.title
+FROM inter_init_scrape AS inter
+LEFT JOIN init_scrape AS test ON inter.link = test.link
+WHERE test.link IS NULL;
 """
 
 # Create a session to execute the query
@@ -198,7 +426,7 @@ session.execute(text(sql_statement))
 session.commit()
 
 # Execute the deletion
-session.execute(text('DELETE FROM inter_news'))
+session.execute(text('DELETE FROM inter_init_scrape'))
 session.commit()
 
 # Close the session

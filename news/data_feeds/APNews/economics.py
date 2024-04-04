@@ -11,9 +11,9 @@ class Article(BaseModel):
     title: str
 
 ''' Process the front page'''
-def ap_econ(article: Article):
+def ap_econ(url):
     # ScraperAPI magic
-    payload = { 'api_key': 'f96027d9e4562ff1645ab574bf4759a0', 'url': article.url, 'render': 'true'}
+    payload = { 'api_key': 'f96027d9e4562ff1645ab574bf4759a0', 'url': url, 'render': 'true'}
     r = requests.get('https://api.scraperapi.com/', params=payload)
     html_response = r.text
     soup = BeautifulSoup(html_response, 'html.parser') # Parse response
@@ -28,7 +28,7 @@ def ap_econ(article: Article):
         else:
             link = a_ref['href']
         title = child_1.get_text(strip=True) if child_1 else 'does not contain'
-        data.append({'link': link, 'title': title})
+        data.append({'link': link, 'title': title, 'network': 'AP_Econ'})
     result = pd.DataFrame(data)
     return result
     #final_data.to_csv('ap_econ.csv', index=False)

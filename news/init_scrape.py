@@ -2,7 +2,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
-
+import numpy as np
+import time
 from transformers import pipeline
 import spacy
 
@@ -188,31 +189,31 @@ def article_pull(url):
     return text_only
 
 
-ap_base = Article(url=SiteData.apecon_sites[0], title='Test1')
-ap = ap_econ(ap_base)
 
-ap.to_csv('testrun.csv')
-
+ap = pd.read_csv('/root/testrun.csv')
+inter_output = []
+i = 0
+start = time.perf_counter()
 for _, ele in ap.iterrows():
+    print(i, len(ap))
+    i += 1
+    inter_data = []
     # intermediate counter holders
     positive = 0
     negative = 0
     neutral = 0
-
     '''Prepping Article'''
     article_text = article_pull(ele['link']) # Collect Link
-    ap['article'] = article_text.encode('utf-8') # Store article text in database for backtesting
     doc = spcy_parser(article_text) # Separate long text into sentences
     sentences = [sent.text for sent in doc.sents] # Get just the text from those sentences
-
 
     '''Models'''
     title_sentiment_0 = x0_model(ele['title'])[0]['label'].lower()
     title_sentiment_1 = x1_model(ele['title'])[0]['label'].lower()
     title_sentiment_2 = x2_model(ele['title']).lower()
-
-    group_title_sentiment = pd.Series([title_sentiment_0, title_sentiment_1, title_sentiment_2]).value_counts()
-    ap['title_sentiment'] = group_title_sentiment.iloc[0]
+    
+    group_title_sentiment = pd.Series([title_sentiment_0, title_sentiment_1]).value_counts().index[0]
+    
 
     group_sentiments_0 = [x0_model(sentence)[0]['label'] for sentence in sentences]
     group_sentiments_1 = [x1_model(sentence)[0]['label'] for sentence in sentences]
@@ -222,41 +223,45 @@ for _, ele in ap.iterrows():
     article_sentiment_1 = pd.Series(group_sentiments_1).value_counts()
     article_sentiment_2 = pd.Series(group_sentiments_2).value_counts()
 
-    for i in range(len(article_sentiment_0)):
-        if article_sentiment_0.index[i].lower() == 'neutral':
-            neutral += article_sentiment_0.iloc[i]
-        if article_sentiment_0.index[i].lower() == 'positive':
-            positive += article_sentiment_0.iloc[i]
-        if article_sentiment_0.index[i].lower() == 'negative':
-            negative += article_sentiment_0.iloc[i]
+    for j in range(len(article_sentiment_0)):
+        if article_sentiment_0.index[j].lower() == 'neutral':
+            neutral += article_sentiment_0.iloc[j]
+        if article_sentiment_0.index[j].lower() == 'positive':
+            positive += article_sentiment_0.iloc[j]
+        if article_sentiment_0.index[j].lower() == 'negative':
+            negative += article_sentiment_0.iloc[j]
     
-    for i in range(len(article_sentiment_1)):
-        if article_sentiment_1.index[i].lower() == 'neutral':
-            neutral += article_sentiment_1.iloc[i]
-        if article_sentiment_1.index[i].lower() == 'positive':
-            positive += article_sentiment_1.iloc[i]
-        if article_sentiment_1.index[i].lower() == 'negative':
-            negative += article_sentiment_1.iloc[i]
+    for k in range(len(article_sentiment_1)):
+        if article_sentiment_1.index[k].lower() == 'neutral':
+            neutral += article_sentiment_1.iloc[k]
+        if article_sentiment_1.index[k].lower() == 'positive':
+            positive += article_sentiment_1.iloc[k]
+        if article_sentiment_1.index[k].lower() == 'negative':
+            negative += article_sentiment_1.iloc[k]
 
-    for i in range(len(article_sentiment_2)):
-        if article_sentiment_2.index[i].lower() == 'neutral':
-            neutral += article_sentiment_2.iloc[i]
-        if article_sentiment_2.index[i].lower() == 'positive':
-            positive += article_sentiment_2.iloc[i]
-        if article_sentiment_2.index[i].lower() == 'negative':
-            negative += article_sentiment_2.iloc[i]
+    for l in range(len(article_sentiment_2)):
+        if article_sentiment_2.index[l].lower() == 'neutral':
+            neutral += article_sentiment_2.iloc[l]
+        if article_sentiment_2.index[l].lower() == 'positive':
+            positive += article_sentiment_2.iloc[l]
+        if article_sentiment_2.index[l].lower() == 'negative':
+            negative += article_sentiment_2.iloc[l]
     
     '''The reason for divison, is that one of the models only predicts positive or negative. To simply add would be to triple count.
         Division is necessary for all of the counts to get back to realistic values'''
-    ap['article_positive'] = positive / 3
-    ap['article_negative'] = negative / 3
-    ap['article_neutral'] = neutral / 2
-
     
-    print(ap.tail())
-    print(ap.info())
-    print(ele.info())
-ap.to_csv('article_run.csv', index=False)
+    inter_data.append(ele['link'])
+    inter_data.append(article_text.encode('utf-8')) # Store article text in database for backtesting
+    inter_data.append(group_title_sentiment)
+    inter_data.append(positive / 3)
+    inter_data.append(negative / 3)
+    inter_data.append(neutral / 2)
+    inter_output.append(inter_data)
+
+stop = time.perf_counter()
+print(stop-start)
+output = pd.DataFrame(inter_output, columns=['link', 'article', 'title_sentiment', 'article_positive', 'article_negative', 'article_neutral'])
+output.to_csv('article_run.csv', index=False)
 
 
 

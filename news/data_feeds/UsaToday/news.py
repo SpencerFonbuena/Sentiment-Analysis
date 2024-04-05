@@ -23,7 +23,6 @@ def usat_news(url):
         else:
             link = ele['href']
         title = ele.get_text(strip=True) if ele else 'does not contain'
-        print(link, title)
         data.append({'link': link, 'title': title, 'network': 'USAT_News'})
 
     

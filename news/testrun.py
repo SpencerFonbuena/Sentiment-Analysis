@@ -1,271 +1,97 @@
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-from pydantic import BaseModel
-import numpy as np
-import time
-from transformers import pipeline
-import spacy
+from pathlib import Path
+from pydantic_settings import BaseSettings
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+from typing import Generator
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, LargeBinary,func
+from datetime import datetime
 
-from data_feeds.APNews.economics import ap_econ
-from models.models import x0_model, x1_model, x2_model
-
-spcy_parser = spacy.load('en_core_web_sm')
-
-class SiteData:
-    abcecon_sites = ['https://abcnews.go.com/Business',
-                'https://abcnews.go.com/Technology']
-
-    abcnews_sites = ['https://abcnews.go.com/Politics',
-                'https://abcnews.go.com/US']
-
-    # APNews
-    apecon_sites = ['https://apnews.com/business']
-
-    apnews_sites = ['https://apnews.com/politics',
-                'https://apnews.com/us-news']
-
-    #BBCNews
-    bbcecon_sites = ['https://www.bbc.com/business']
-
-    #BInsider
-    biecon_sites = ['https://www.businessinsider.com/strategy'
-                'https://www.businessinsider.com/business',
-                'https://www.businessinsider.com/tech',
-                'https://www.businessinsider.com/tech'
-                ]
-
-    binews_sites = ['https://www.businessinsider.com/politics']
-
-    # Breitbart
-    breitbartecon_sites = ['https://www.breitbart.com/economy/']
-
-    breitbartnews_sites = ['https://www.breitbart.com/politics/']
-
-    # CBS
-    cbsecon_sites = ['https://www.cbsnews.com/moneywatch/']
-
-    cbsnews_sites = ['https://www.cbsnews.com/us/',
-                'https://www.cbsnews.com/politics/']
-
-    # CNN
-    cnnecon_sites = ['https://www.cnn.com/business']
-
-    cnnnews_sites = ['https://www.cnn.com/us',
-                'https://www.cnn.com/politics',
-                'https://www.cnn.com/world']
-
-    #Daily Mail
-    dmecon_sites = ['https://www.dailymail.co.uk/news/us-economy/index.html',
-                'https://www.dailymail.co.uk/yourmoney/index.html']
-
-    dmnews_sites = ['https://www.dailymail.co.uk/news/us-politics/index.html']
-
-    # Daily Wire
-    dwnews_sites = ['https://www.dailywire.com/topic/politics',
-                'https://www.dailywire.com/topic/u-s']
-
-    # Fox News
-    foxnews_sites = ['https://www.foxnews.com/politics',
-                'https://www.foxnews.com/world']
-
-    # Guardian
-    guardianecon_sites = ['https://www.theguardian.com/us/business',
-                    'https://www.theguardian.com/business/economics',
-                    'https://www.theguardian.com/business/us-small-business']
-
-    guardiannews_sites = ['https://www.theguardian.com/world']
-
-    # Market Watch
-    mwecon_sites = ['https://www.marketwatch.com/economy-politics/federal-reserve?mod=economy-politics',
-                'https://www.marketwatch.com/economy-politics?mod=top_nav',
-                'https://www.marketwatch.com/investing?mod=top_nav',
-                'https://www.marketwatch.com/',
-                'https://www.marketwatch.com/investing/stocks?mod=investing',
-                'https://www.marketwatch.com/investing/barrons?mod=stocks',
-                'https://www.marketwatch.com/markets/earnings?mod=barrons-on-marketwatch',
-                'https://www.marketwatch.com/markets/us?mod=earnings',
-                'https://www.marketwatch.com/market-data/asia?mod=currencies-market-data',
-                'https://www.marketwatch.com/market-data/rates?mod=asia-market-data'
-                ]
-
-
-    # NBC Sites
-    nbcecon_sites = ['https://www.nbcnews.com/business',
-                'https://www.nbcnews.com/tech-media']
-
-    nbcnews_sites = ['https://www.msnbc.com/']
-
-    # NY Times
-    nytecon_sites = ['https://www.nytimes.com/section/business',
-                'https://www.nytimes.com/section/business/economy',
-                'https://www.nytimes.com/section/business/energy-environment',
-                'https://www.nytimes.com/section/business/media',
-                'https://www.nytimes.com/section/technology',
-                'https://www.nytimes.com/section/business/small-business',
-                'https://www.nytimes.com/section/technology/personaltech']
-
-    nytnews_sites = ['https://www.nytimes.com/section/politics']
-
-
-    # Politico
-    politiconews_sites = ['https://www.politico.com/']
-
-    #Economist
-    economistecon_sites = ['https://www.economist.com/finance-and-economics',
-                'https://www.economist.com/business']
-
-    economistnews_sites = ['https://www.economist.com/topics/united-states',
-                'https://www.economist.com/the-world-this-week']
-
-    # TYT News
-    tytnews_sites = ['https://tyt.com/reports']
-
-    # USA Today
-    usatecon_sites = ['https://www.usatoday.com/money/',
-                'https://www.usatoday.com/tech/']
-
-    usatnews_sites = ['https://www.usatoday.com/news/nation/']
-
-
-    # WSJ
-    wsjecon_sites = ['https://www.wsj.com/business?mod=nav_top_section',
-                'https://www.wsj.com/business/autos?mod=nav_top_subsection',
-                'https://www.wsj.com/business/airlines?mod=nav_top_subsection',
-                'https://www.wsj.com/business/autos?mod=nav_top_subsection',
-                'https://www.wsj.com/business/c-suite?mod=nav_top_subsection',
-                'https://www.wsj.com/business/energy-oil?mod=nav_top_subsection',
-                'https://www.wsj.com/business/telecom?mod=nav_top_subsection',
-                'https://www.wsj.com/business/retail?mod=nav_top_subsection',
-                'https://www.wsj.com/business/hospitality?mod=nav_top_subsection',
-                'https://www.wsj.com/business/logistics?mod=nav_top_subsection',
-                'https://www.wsj.com/business/media?mod=nav_top_subsection',
-                'https://www.wsj.com/economy/central-banking?mod=nav_top_subsection',
-                'https://www.wsj.com/economy/consumers?mod=nav_top_subsection',
-                'https://www.wsj.com/economy/housing?mod=nav_top_subsection',
-                'https://www.wsj.com/economy/jobs?mod=nav_top_subsection',
-                'https://www.wsj.com/economy/trade?mod=nav_top_subsection',
-                'https://www.wsj.com/economy/global',
-                'https://www.wsj.com/finance/banking?mod=nav_top_subsection',
-                'https://www.wsj.com/finance/commodities-futures?mod=nav_top_subsection',
-                'https://www.wsj.com/finance/currencies?mod=nav_top_subsection',
-                'https://www.wsj.com/finance/investing?mod=nav_top_subsection',
-                'https://www.wsj.com/finance/regulation?mod=nav_top_subsection',
-                'https://www.wsj.com/finance/stocks?mod=nav_top_subsection']
-
-    wsjnews_sites = ['https://www.wsj.com/politics?mod=nav_top_section',
-                'https://www.wsj.com/world/americas?mod=nav_top_subsection',
-                'https://www.wsj.com/world/china?mod=nav_top_subsection',
-                'https://www.wsj.com/world/europe?mod=nav_top_subsection',
-                'https://www.wsj.com/world/middle-east?mod=nav_top_subsection']
-
-    # Yahoo 
-    yahooecon_sites = ['https://finance.yahoo.com/bidenomics/',
-                'https://finance.yahoo.com/topic/stock-market-news/',
-                'https://finance.yahoo.com/topic/economic-news/',
-                'https://finance.yahoo.com/topic/earnings/',
-                'https://finance.yahoo.com/topic/crypto/',
-                'https://finance.yahoo.com/live/politics/',
-                'https://finance.yahoo.com/bidenomics/']
-
-    yahoonews_sites = ['https://www.yahoo.com/news/world/',
-                'https://www.yahoo.com/news/us/',
-                'https://www.yahoo.com/news/politics/']
-
-
-class Article(BaseModel):
-    url: str
-    title: str
-
-'''Process the article and get it ready for sentiment classifier'''
-def article_pull(url):
-    # Don't render articles. It will come up with many you don't want.
-    payload = { 'api_key': 'f96027d9e4562ff1645ab574bf4759a0', 'url': url}
-    r = requests.get('https://api.scraperapi.com/', params=payload)
-    html_response = r.text
-
-    soup = BeautifulSoup(html_response, 'html.parser')
-    text_only = soup.get_text(strip=True)
-    return text_only
-
-
-
-ap = pd.read_csv('/root/testrun.csv')
-inter_output = []
-i = 0
-start = time.perf_counter()
-for _, ele in ap.iterrows():
-    print(i, len(ap))
-    i += 1
-    inter_data = []
-    # intermediate counter holders
-    positive = 0
-    negative = 0
-    neutral = 0
-    '''Prepping Article'''
-    article_text = article_pull(ele['link']) # Collect Link
-    doc = spcy_parser(article_text) # Separate long text into sentences
-    sentences = [sent.text for sent in doc.sents] # Get just the text from those sentences
-
-    '''Models'''
-    title_sentiment_0 = x0_model(ele['title'])[0]['label'].lower()
-    title_sentiment_1 = x1_model(ele['title'])[0]['label'].lower()
-    title_sentiment_2 = x2_model(ele['title']).lower()
+class Settings(BaseSettings):
     
-    group_title_sentiment = pd.Series([title_sentiment_0, title_sentiment_1]).value_counts().index[0]
+    DB_HOST: str = "viaduct.proxy.rlwy.net"  
+    DB_USER: str = "root"       
+    DB_PASS: str = "fhGsALhNYypVIoXxZJqaOpUruyeqPTyE"  
+    MYSQL_PORT: int  = 47890    
+    DB_NAME: str = "railway"       
+    DB_URL: str = f'mysql+mysqlconnector://{DB_USER}:{DB_PASS}@{DB_HOST}:{MYSQL_PORT}/{DB_NAME}'
+    
+def get_settings() -> Settings:
+    return Settings()
+
+settings = get_settings()
+
+engine = create_engine(
+    settings.DB_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=0
+)
     
 
-    group_sentiments_0 = [x0_model(sentence)[0]['label'] for sentence in sentences]
-    group_sentiments_1 = [x1_model(sentence)[0]['label'] for sentence in sentences]
-    group_sentiments_2 = [x2_model(sentence) for sentence in sentences]
-    
-    article_sentiment_0 = pd.Series(group_sentiments_0).value_counts()
-    article_sentiment_1 = pd.Series(group_sentiments_1).value_counts()
-    article_sentiment_2 = pd.Series(group_sentiments_2).value_counts()
-
-    for j in range(len(article_sentiment_0)):
-        if article_sentiment_0.index[j].lower() == 'neutral':
-            neutral += article_sentiment_0.iloc[j]
-        if article_sentiment_0.index[j].lower() == 'positive':
-            positive += article_sentiment_0.iloc[j]
-        if article_sentiment_0.index[j].lower() == 'negative':
-            negative += article_sentiment_0.iloc[j]
-    
-    for k in range(len(article_sentiment_1)):
-        if article_sentiment_1.index[k].lower() == 'neutral':
-            neutral += article_sentiment_1.iloc[k]
-        if article_sentiment_1.index[k].lower() == 'positive':
-            positive += article_sentiment_1.iloc[k]
-        if article_sentiment_1.index[k].lower() == 'negative':
-            negative += article_sentiment_1.iloc[k]
-
-    for l in range(len(article_sentiment_2)):
-        if article_sentiment_2.index[l].lower() == 'neutral':
-            neutral += article_sentiment_2.iloc[l]
-        if article_sentiment_2.index[l].lower() == 'positive':
-            positive += article_sentiment_2.iloc[l]
-        if article_sentiment_2.index[l].lower() == 'negative':
-            negative += article_sentiment_2.iloc[l]
-    
-    '''The reason for divison, is that one of the models only predicts positive or negative. To simply add would be to triple count.
-        Division is necessary for all of the counts to get back to realistic values'''
-    
-    inter_data.append(ele['link'])
-    inter_data.append(article_text.encode('utf-8')) # Store article text in database for backtesting
-    inter_data.append(group_title_sentiment)
-    inter_data.append(positive / 3)
-    inter_data.append(negative / 3)
-    inter_data.append(neutral / 2)
-    inter_output.append(inter_data)
-
-stop = time.perf_counter()
-print(stop-start)
-output = pd.DataFrame(inter_output, columns=['link', 'article', 'title_sentiment', 'article_positive', 'article_negative', 'article_neutral'])
-output.to_csv('article_run.csv', index=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 
+def get_db() -> Generator:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+'''Production Tables'''
+# Type verification of data inputs
+class NewsArticles(Base):
+    __tablename__ = "news_articles"
+    id = Column(Integer, primary_key=True, unique=True)
+    link = Column(String(300), unique=True)
+    title = Column(String(255),  nullable=False)
+    network = Column(String(50), default=False, nullable=False)
+    article = Column(LargeBinary, nullable=False)
+    title_sentiment = Column(String(50), nullable=False)
+    article_positive = Column(String(50), nullable=False)
+    article_negative = Column(String(50), nullable=False)
+    article_neutral = Column(String(50), nullable=False)
+    date_created = Column(DateTime, nullable=False, server_default=func.now())
+
+'''
+# # Define the SQLAlchemy model for the file_data table
+class TwitterData(Base):
+    __tablename__ = 'twitter_data'
+    tweet_id = Column(String(50), primary_key=True)
+    tweet = Column(LargeBinary, nullable=False)
+    sentiment = Column(String(50), default=None, nullable=True)
+    user = Column(String(255), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
 
 
+# # Define the SQLAlchemy model for the file_data table
+class InterTwitterData(Base):
+    __tablename__ = 'inter_twitter'
+    tweet_id = Column(String(50), primary_key=True)
+    tweet = Column(LargeBinary, nullable=False)
+    sentiment = Column(String(50), default=None, nullable=True)
+    user = Column(String(255), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
 
+class InterInitScrape(Base):
+    __tablename__ = 'inter_init_scrape'
+    id = Column(Integer, primary_key=True)
+    link = Column(String(255), nullable=False)
+    title = Column(String(255),  nullable=False)
+    network = Column(String(50), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
 
+class InitScrape(Base):
+    __tablename__ = 'init_scrape'
+    id = Column(Integer, primary_key=True)
+    link = Column(String(255), nullable=False)
+    title = Column(String(255), nullable=False)
+    network = Column(String(50), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())'''
 
+def create_tables():
+    # this command will create the tables, if they don't exist already
+    Base.metadata.create_all(engine)
+create_tables()

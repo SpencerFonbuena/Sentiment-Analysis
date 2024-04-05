@@ -23,32 +23,19 @@ def bbc_econ(url):
     for ele in elements:
         child_1 = ele.find('div').find('a')
         child_2 = child_1.find_all('h2')
-        
-        print(child_2)
         try:
             if child_1['href'][:4] != 'http':
                 link = base_url + child_1['href']
             else:
                 link = child_1['href']
-            #title = child_3.get_text(strip=True) if child_3 else 'does not contain'
-            print(link)
-            #data.append({'link': link, 'title': title})
+            title = child_2.get_text(strip=True) if child_2 else 'does not contain'
+            data.append({'link': link, 'title': title, 'network': 'BBC_Econ'})
         except:
             continue
     
     final_data = pd.DataFrame(data)
     return final_data
 
-'''Process the article and get it ready for sentiment classifier'''
-def article_pull(article: Article):
-    # Don't render articles. It will come up with many you don't want.
-    payload = { 'api_key': 'f96027d9e4562ff1645ab574bf4759a0', 'url': article.url}
-    r = requests.get('https://api.scraperapi.com/', params=payload)
-    html_response = r.text
-
-    soup = BeautifulSoup(html_response, 'html.parser')
-    text_only = soup.get_text(strip=True)
-    return {f'{article.title}': text_only}
 
 
 

@@ -8,12 +8,6 @@ from datetime import datetime
 
 class Settings(BaseSettings):
     
-    DB_HOST: str = "viaduct.proxy.rlwy.net"  
-    DB_USER: str = "root"       
-    DB_PASS: str = "fhGsALhNYypVIoXxZJqaOpUruyeqPTyE"  
-    MYSQL_PORT: int  = 47890    
-    DB_NAME: str = "railway"       
-    DB_URL: str = f'mysql+mysqlconnector://{DB_USER}:{DB_PASS}@{DB_HOST}:{MYSQL_PORT}/{DB_NAME}'
     
 def get_settings() -> Settings:
     return Settings()

@@ -75,9 +75,6 @@ async def main():
     
     db_url = '/root/Sentiment-Analysis/accounts.db'
     api = API(db_url)
-    #await api.pool.add_account('SFonbuena7734', 'Justg0tt@try', 'schfonbuena@gmail.com', 'sp3nc3rp00')
-    #await api.pool.add_account('FonSpence26', 'Justg0tt@try', 'spencer@om.com', 'Th3g!ver1stime')
-    #await api.pool.add_account('ClarkHeato24311', 'Justg0tt@try', 'procurement@om.com', 'Omspend159')
     
     await api.pool.login_all()
     inter_data = pd.DataFrame()
